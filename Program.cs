@@ -1,63 +1,85 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using OpenAI_API;
 using OpenAI_API.Models;
 using OpenAI_API.Chat;
 using System.Threading.Tasks;
 
-class Program
+namespace ChatGptBuddy
 {
-    static async Task Main(string[] args)
+    public class Program
     {
-        // Replace with your API key here
-        string apiKey = "API KEY GOES HERE";
-
-        var client = new OpenAI_API.OpenAIAPI(apiKey);
-
-        await PromptAndResponseChat(client);
-
-        // await PerformAsyncOperation(client);
-        // Console.ReadLine();
-    }
-
-    static async Task<int> PromptAndResponseChat(OpenAIAPI client)
-    {
-        var chat = client.Chat.CreateConversation();
-
-        for (int x = 0; x < 5; x++)
+        public static async Task Main(string[] args)
         {
-            Console.WriteLine("Enter a prompt: ");
-            var prompt = Console.ReadLine();
+            // Replace with your API key here
+            string apiKey = "API KEY GOES HERE";
 
-            chat.AppendUserInput(prompt);
-            string response = await chat.GetResponseFromChatbot();
+            DataContext dbContext = new DataContext();
 
-            Console.WriteLine($"Response: {response}");
+            var client = new OpenAI_API.OpenAIAPI(apiKey);
+
+            await PromptAndResponseChat(client, dbContext);
+
+            // await PerformAsyncOperation(client);
+            // Console.ReadLine();
         }
 
-        foreach (ChatMessage msg in chat.Messages)
+        static async Task<int> PromptAndResponseChat(OpenAIAPI client, DbContext dbContext)
         {
-            Console.WriteLine($"{msg.Role}: {msg.Content}");
+            var chat = client.Chat.CreateConversation();
+            var chatId = Guid.NewGuid().ToString();
+
+            var chatCounter = 0;
+
+            for (int x = 0; x < 50; x++)
+            {
+                Console.Write($"\nEnter a prompt ({x}): ");
+                var prompt = Console.ReadLine();
+
+                if (String.IsNullOrEmpty(prompt) || prompt.ToUpper() == "EXIT")
+                {
+                    break;
+                }
+
+                WriteConversationEntry(dbContext, chatId, chatCounter++, Speaker.Human, prompt);
+                chat.AppendUserInput(prompt);
+                string response = await chat.GetResponseFromChatbot();
+
+                Console.WriteLine($"Response ({x}): {response}");
+                WriteConversationEntry(dbContext, chatId, chatCounter++, Speaker.ChatGPT, response);
+            }
+
+            // foreach (ChatMessage msg in chat.Messages)
+            // {
+            //     Console.WriteLine($"{msg.Role}: {msg.Content}");
+            // }
+
+            return 2;
         }
 
-        return 2;
-    }
-
-    static async Task<ChatResult?> PerformAsyncOperation(OpenAIAPI api)
-    {
-        var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
+        static void WriteConversationEntry(DbContext dbContext, string chatId, int sequence, Speaker speaker, string text)
         {
-            Model = Model.ChatGPTTurbo,
-            Temperature = 0.1,
-            MaxTokens = 1000,
-            Messages = new ChatMessage[] {
+            dbContext.Add(new ConversationEntry { ChatId = chatId, Sequence = sequence, EventTime = DateTime.UtcNow, Speaker = speaker, Text = text });
+            dbContext.SaveChanges();
+        }
+
+        static async Task<ChatResult?> PerformAsyncOperation(OpenAIAPI api)
+        {
+            var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
+            {
+                Model = Model.ChatGPTTurbo,
+                Temperature = 0.1,
+                MaxTokens = 1000,
+                Messages = new ChatMessage[] {
                     new ChatMessage(ChatMessageRole.User, "Provide a list of what you think are the 10 best songs of all time."),
                     new ChatMessage(ChatMessageRole.User, "Make the list of songs only from 2010 or newer and list each year they were released."),
                 }
-        });
+            });
 
-        Console.WriteLine(result);
+            Console.WriteLine(result);
 
-        return result; // Return some result
+            return result; // Return some result
+        }
     }
 }
