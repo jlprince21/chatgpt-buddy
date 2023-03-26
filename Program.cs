@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
 using OpenAI_API;
 using OpenAI_API.Models;
 using OpenAI_API.Chat;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace ChatGptBuddy
@@ -19,17 +19,23 @@ namespace ChatGptBuddy
 
             var client = new OpenAI_API.OpenAIAPI(apiKey);
 
-            await PromptAndResponseChat(client, dbContext);
+            var chatId = await PromptAndResponseChat(client, dbContext);
 
-            // await PerformAsyncOperation(client);
-            // Console.ReadLine();
+            Console.Write("Enter tags with spaces or nothing to exit: ");
+            var tags = Console.ReadLine();
+
+            if (String.IsNullOrEmpty(tags) == false)
+            {
+                await ApplyTags(dbContext, chatId, tags);
+            }
+
+            Console.WriteLine("Goodbye");
         }
 
-        static async Task<int> PromptAndResponseChat(OpenAIAPI client, DbContext dbContext)
+        static async Task<string> PromptAndResponseChat(OpenAIAPI client, DbContext dbContext)
         {
             var chat = client.Chat.CreateConversation();
             var chatId = Guid.NewGuid().ToString();
-
             var chatCounter = 0;
 
             for (int x = 0; x < 50; x++)
@@ -47,13 +53,55 @@ namespace ChatGptBuddy
                 string response = await chat.GetResponseFromChatbot();
 
                 Console.WriteLine($"Response ({x}): {response}");
-                WriteConversationEntry(dbContext, chatId, chatCounter++, Speaker.ChatGPT, response);
+                WriteConversationEntry(dbContext, chatId, chatCounter++, Speaker.ChatGPT, response.TrimStart());
             }
 
-            // foreach (ChatMessage msg in chat.Messages)
-            // {
-            //     Console.WriteLine($"{msg.Role}: {msg.Content}");
-            // }
+            return chatId;
+        }
+
+        static async Task<int> ApplyTags(DataContext dbContext, string chatId, string tags)
+        {
+            var tagsTokenized = tags.Split(' ').ToList();
+
+            if (tagsTokenized == null || tagsTokenized.Count() <= 0)
+            {
+                return 2;
+            }
+            else
+            {
+                foreach(string candidate in tagsTokenized)
+                {
+                    var tagFindResult = (from tag in dbContext.Tags
+                                    where tag.Text == candidate
+                                    select tag).FirstOrDefault<Tag>();
+
+                    if (tagFindResult == null)
+                    {
+                        var id = Guid.NewGuid().ToString();
+
+                        // create tag
+                        dbContext.Tags.Add(new Tag{ Id = id, Text = candidate});
+                        dbContext.AppliedTags.Add(new AppliedTag {Id = Guid.NewGuid().ToString(), ChatId = chatId, TagId = id});
+                        await dbContext.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        // tag is already in database
+                        // search AppliedTags and only apply if not present
+
+                        var appliedTagFindResult = (from appliedTag in dbContext.AppliedTags
+                                    where appliedTag.TagId == tagFindResult.Id && appliedTag.ChatId == chatId
+                                    select appliedTag).FirstOrDefault<AppliedTag>();
+
+                        if (appliedTagFindResult == null)
+                        {
+                            Console.WriteLine("Applying tag");
+                            dbContext.AppliedTags.Add(new AppliedTag{Id = Guid.NewGuid().ToString(), ChatId = chatId, TagId = tagFindResult.Id});
+                            await dbContext.SaveChangesAsync();
+                        }
+                    }
+                }
+            }
 
             return 2;
         }
@@ -64,7 +112,7 @@ namespace ChatGptBuddy
             dbContext.SaveChanges();
         }
 
-        static async Task<ChatResult?> PerformAsyncOperation(OpenAIAPI api)
+        static async Task<ChatResult?> ChatCompletionDemo(OpenAIAPI api)
         {
             var result = await api.Chat.CreateChatCompletionAsync(new ChatRequest()
             {

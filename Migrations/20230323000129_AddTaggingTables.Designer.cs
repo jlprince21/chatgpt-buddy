@@ -3,6 +3,7 @@ using System;
 using ChatGptBuddy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace chatgpt.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20230323000129_AddTaggingTables")]
+    partial class AddTaggingTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "7.0.4");
@@ -32,7 +35,7 @@ namespace chatgpt.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AppliedTags", (string)null);
+                    b.ToTable("AppliedTags");
                 });
 
             modelBuilder.Entity("ChatGptBuddy.ConversationEntry", b =>
@@ -59,7 +62,7 @@ namespace chatgpt.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Conversations", (string)null);
+                    b.ToTable("Conversations");
                 });
 
             modelBuilder.Entity("ChatGptBuddy.Tag", b =>
@@ -73,7 +76,7 @@ namespace chatgpt.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tags", (string)null);
+                    b.ToTable("Tags");
                 });
 #pragma warning restore 612, 618
         }
