@@ -12,11 +12,16 @@ namespace ChatGptBuddy
     {
         public static async Task Main(string[] args)
         {
-            // Replace with your API key here
-            string apiKey = "API KEY GOES HERE";
+            var apiKey = Environment.GetEnvironmentVariable("CGB_API_KEY");
+            var dbConnectionString = Environment.GetEnvironmentVariable("CGB_DB_CONNECTION");
+
+            if (String.IsNullOrEmpty(apiKey) || String.IsNullOrEmpty(dbConnectionString))
+            {
+                Console.WriteLine("One or more environment variables aren't set. Exiting.");
+                System.Environment.Exit(1);
+            }
 
             DataContext dbContext = new DataContext();
-
             var client = new OpenAI_API.OpenAIAPI(apiKey);
 
             var chatId = await PromptAndResponseChat(client, dbContext);

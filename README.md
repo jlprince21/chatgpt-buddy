@@ -11,10 +11,13 @@ file.
 
 ## Environment Variables
 
-*Coming soon*
+Without the environment variables set, the application will exit after giving
+a notice in the terminal.
 
-For now set the API key (apiKey) in `Program.cs` and the database path (where
-.UseSqlite appears) in `DataContext.cs`.
+CGB_API_KEY - required, sets the API key for your OpenAI account. Without this
+the program can't communicate with the ChatGPT API.
+
+CGB_DB_CONNECTION - required, sets the path to your SQLite database file.
 
 ## Running the Project
 

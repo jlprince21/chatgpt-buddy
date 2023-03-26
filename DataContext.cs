@@ -16,9 +16,7 @@ namespace ChatGptBuddy
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            // TODO 2023-03-21 add env var support
-            // optionsBuilder.UseSqlite(Environment.GetEnvironmentVariable("CHATGPT_BUDDY_SQLITE_PATH"));
-            optionsBuilder.UseSqlite("DataSource=/path/to/your/gpt_database.db");
+            optionsBuilder.UseSqlite(Environment.GetEnvironmentVariable("CGB_DB_CONNECTION"));
         }
     }
 
