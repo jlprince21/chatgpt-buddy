@@ -24,17 +24,46 @@ namespace ChatGptBuddy
             DataContext dbContext = new DataContext();
             var client = new OpenAI_API.OpenAIAPI(apiKey);
 
-            var chatId = await PromptAndResponseChat(client, dbContext);
+            Console.Write($"---- ChatGPT Buddy Options ----"
+                          + $"\nStart chat (1)"
+                          + $"\nChoice: ");
+            var prompt = Console.ReadLine();
 
-            Console.Write("Enter tags with spaces or nothing to exit: ");
-            var tags = Console.ReadLine();
-
-            if (String.IsNullOrEmpty(tags) == false)
+            if (String.IsNullOrEmpty(prompt))
             {
-                await ApplyTags(dbContext, chatId, tags);
+                Console.WriteLine("No input detected, goodbye.");
             }
+            else if (prompt == "1")
+            {
+                Console.WriteLine("\nStarting a chat session. Type \"exit\" to quit.");
+                await DoChat(client, dbContext);
+            }
+            else
+            {
+                Console.WriteLine("Invalid input detected, goodbye.");
+            }
+        }
 
-            Console.WriteLine("Goodbye");
+        static async Task DoChat(OpenAIAPI client, DataContext dbContext)
+        {
+            try
+            {
+                var chatId = await PromptAndResponseChat(client, dbContext);
+
+                Console.Write("\nEnter tags with spaces or nothing to exit: ");
+                var tags = Console.ReadLine();
+
+                if (String.IsNullOrEmpty(tags) == false)
+                {
+                    await ApplyTags(dbContext, chatId, tags);
+                }
+
+                Console.WriteLine("\nGoodbye.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nAn error occurred: {ex.Message}");
+            }
         }
 
         static async Task<string> PromptAndResponseChat(OpenAIAPI client, DbContext dbContext)
@@ -55,9 +84,20 @@ namespace ChatGptBuddy
 
                 WriteConversationEntry(dbContext, chatId, chatCounter++, Speaker.Human, prompt);
                 chat.AppendUserInput(prompt);
-                string response = await chat.GetResponseFromChatbot();
 
-                Console.WriteLine($"Response ({x}): {response}");
+                string response;
+
+                try
+                {
+                    response = await chat.GetResponseFromChatbot();
+                    Console.WriteLine($"\nResponse ({x}): {response}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\nAn error occurred while getting a response from ChatGPT: {ex.Message}");
+                    continue;
+                }
+
                 WriteConversationEntry(dbContext, chatId, chatCounter++, Speaker.ChatGPT, response.TrimStart());
             }
 
@@ -93,7 +133,6 @@ namespace ChatGptBuddy
                     {
                         // tag is already in database
                         // search AppliedTags and only apply if not present
-
                         var appliedTagFindResult = (from appliedTag in dbContext.AppliedTags
                                     where appliedTag.TagId == tagFindResult.Id && appliedTag.ChatId == chatId
                                     select appliedTag).FirstOrDefault<AppliedTag>();
